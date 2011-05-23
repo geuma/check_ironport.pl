@@ -1,0 +1,23 @@
+check_ironport.pl
+(c) 2011 Stefan Heumader
+email: stefan@heumader.at
+webpage: http://check-ironport.urandom.at
+
+Licened under GPLv3 (see LICENSE file)
+
+INTRODUCTION
+------------
+check_ironport.pl is a Nagios Plugin, which requests
+specific parameters via SNMP from a Cisco Ironport Web
+and Mail Security appliance.
+
+See http://www.perl.org for more details on Perl
+and http://www.nagios.org/ for more details on Nagios.
+
+BUGS & FEATURES
+---------------
+Email me if you find bugs or if you have some ideas for
+improvements. <stefan@heumader.at>
+
+
+Stefan Heumader
