@@ -55,7 +55,7 @@ my %oids = (
 );
 
 # Globals
-my $Version = "0.6";
+my $Version = "0.7";
 my $DEBUG = 0;
 
 my $o_verb = undef;
@@ -240,23 +240,67 @@ foreach (keys %$result)
 	verbose("OID: $_, Desc: $$result{$_}");
 	unless ($$result{$_} eq "endOfMibView")
 	{
-		$value = $$result{$_} if $$result{$_} > $value;
+		if ($o_category eq 'raidLastError')
+		{
+			$value = $$result{$_} if $$result{$_} ne 'No Errors';
+		}
+		elsif ($o_category eq 'keySecondsUntilExpire')
+		{
+			$value = $$result{$_} if $$result{$_} < $value;
+		}
+		else
+		{
+			$value = $$result{$_} if $$result{$_} > $value;
+		}
 	}
 }
 
 my $exit_code = $ERRORS{"OK"};
-if ($value > $o_crit)
+if ($o_category eq 'raidLastError')
 {
-	print "SNMP $o_category CRITICAL: $value > $o_crit\n";
-	$exit_code = $ERRORS{'CRITICAL'};
+	if ($value eq 'No Errors')
+	{
+		print "SNMP $o_category OK: $value\n";
+		$exit_code = $ERRORS{"OK"};
+	}
+	else
+	{
+		print "SNMP $o_category CRITICAL: $value\n";
+		$exit_code = $ERRORS{'CRITICAL'};
+	}
 }
-elsif ($value > $o_warn)
+elsif ($o_category eq 'keySecondsUntilExpire')
 {
-	print "SNMP $o_category WARNING: $value > $o_warn\n";
-	$exit_code = $ERRORS{'WARNING'};
+	if ($value > $o_warn)
+	{
+		print "SNMP $o_category OK: $value > $o_warn\n";
+	}
+	elsif ($value > $o_crit)
+	{
+		print "SNMP $o_category WARNING: $value > $o_crit\n";
+		$exit_code = $ERRORS{'WARNING'};
+	}
+	else
+	{
+		print "SNMP $o_category CRITICAL: $value < $o_crit\n";
+		$exit_code = $ERRORS{'CRITICAL'};
+	}
 }
 else
 {
-	print "SNMP $o_category OK: $value < $o_warn\n";
+	if ($value > $o_crit)
+	{
+		print "SNMP $o_category CRITICAL: $value > $o_crit\n";
+		$exit_code = $ERRORS{'CRITICAL'};
+	}
+	elsif ($value > $o_warn)
+	{
+		print "SNMP $o_category WARNING: $value > $o_warn\n";
+		$exit_code = $ERRORS{'WARNING'};
+	}
+	else
+	{
+		print "SNMP $o_category OK: $value < $o_warn\n";
+	}
 }
 exit $exit_code;
