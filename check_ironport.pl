@@ -55,7 +55,7 @@ my %oids = (
 );
 
 # Globals
-my $Version = "0.7";
+my $Version = "0.8";
 my $DEBUG = 0;
 
 my $o_verb = undef;
@@ -283,6 +283,87 @@ elsif ($o_category eq 'keySecondsUntilExpire')
 	else
 	{
 		print "SNMP $o_category CRITICAL: $value < $o_crit\n";
+		$exit_code = $ERRORS{'CRITICAL'};
+	}
+}
+elsif ($o_category eq 'memoryAvailabilityStatus' || $o_category eq 'c-queueAvailabilityStatus')
+{
+	if ($value == 1)
+	{
+		print "SNMP $o_category OK: $value = 1\n";
+	}
+	elsif ($value == 2)
+	{
+		print "SNMP $o_category WARNING: $value = 2\n";
+		$exit_code = $ERRORS{'WARNING'};
+	}
+	elsif ($value == 3)
+	{
+		print "SNMP $o_category CRITICAL: $value = 3\n";
+		$exit_code = $ERRORS{'CRITICAL'};
+	}
+}
+elsif ($o_category eq 'powerSupplyRedundancy')
+{
+	if ($value == 1)
+	{
+		print "SNMP $o_category OK: $value = 1\n";
+	}
+	elsif ($value == 2)
+	{
+		print "SNMP $o_category CRITICAL: $value = 2\n";
+		$exit_code = $ERRORS{'CRITICAL'};
+	}
+}
+elsif ($o_category eq 'c-resourceConservationReason')
+{
+	if ($value == 1)
+	{
+		print "SNMP $o_category OK: $value = 1\n";
+	}
+	elsif ($value == 2 || $value == 3)
+	{
+		print "SNMP $o_category WARNING: $value = 2 (MEMORY)\n" if $value == 2;
+		print "SNMP $o_category WARNING: $value = 3 (QUEUE SHORTAGE)\n" if $value == 3;
+		$exit_code = $ERRORS{'WARNING'};
+	}
+	elsif ($value == 4)
+	{
+		print "SNMP $o_category CRITICAL: $value = 4 (QUEUE FULL)\n";
+		$exit_code = $ERRORS{'CRITICAL'};
+	}
+}
+elsif ($o_category eq 'raidStatus')
+{
+	if ($value == 1)
+	{
+		print "SNMP $o_category OK: $value = 1\n";
+	}
+	elsif ($value == 2)
+	{
+		print "SNMP $o_category CRITICAL: $value = 2 (FAILURE)\n";
+		$exit_code = $ERRORS{'CRITICAL'};
+	}
+	elsif ($value == 3)
+	{
+		print "SNMP $o_category WARNING: $value = 3 (REBUILD)\n";
+		$exit_code = $ERRORS{'WARNING'};
+	}
+}
+elsif ($o_category eq 'powerSupplyStatus')
+{
+	if ($value == 2)
+	{
+		print "SNMP $o_category OK: $value = 2 (HEALTHY)\n";
+	}
+	elsif ($value == 3)
+	{
+		print "SNMP $o_category WARNING: $value = 3 (NoAC)\n";
+		$exit_code = $ERRORS{'WARNING'};
+	}
+	elsif ($value == 4)
+	{
+		print "SNMP $o_category CRITICAL: $value = 4 (FAULTY)\n";
 		$exit_code = $ERRORS{'CRITICAL'};
 	}
 }
