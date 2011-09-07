@@ -43,7 +43,7 @@ my %oids = (
 	# ENVIRONMENT
 	'degreesCelsius'							=> '1.3.6.1.4.1.15497.1.1.1.9.1.2',
 	# FEATURE KEYS & UPDATES
-	'keySecondsUntilExpire'						=> '1.3.6.1.4.1.15497.1.1.1.12.1.4', 	# seconds to expire
+	'keySecondsUntilExpire'						=> '1.3.6.1.4.1.15497.1.1.1.12.1.2', 	# seconds to expire
 
 	# MAIL SPECIFIC
 	'c-workQueueMessages'						=> '1.3.6.1.4.1.15497.1.1.1.11', 		# amount of emails in workqueue
@@ -55,7 +55,7 @@ my %oids = (
 );
 
 # Globals
-my $Version = "0.8";
+my $Version = "0.9";
 my $DEBUG = 0;
 
 my $o_verb = undef;
@@ -68,6 +68,8 @@ my $o_timeout = 5;
 my $o_warn = undef;
 my $o_crit = undef;
 my $o_category = undef;
+my $o_licence = undef;
+my @licence_categories = ();
 
 # FUNCTIONS
 
@@ -78,13 +80,13 @@ sub p_version ()
 
 sub p_usage ()
 {
-	print "$0 usage: $0 [-v] -H <host> -C <snmp_community> [-p <port>] -w <warning_level> -c <critical_level> [-t <timeout>] [-V] -x <category>\n";
+	print "$0 usage: $0 [-v] -H <host> -C <snmp_community> [-p <port>] -w <warning_level> -c <critical_level> [-t <timeout>] [-V] -x <category> [-l <comma seperated licence items>]\n";
 }
 
 sub p_help ()
 {
 	print "\ncheck_ironport.pl - SNMP Ironport monitor PlugIn for Nagios in version $Version\n";
-	print "Copyright (C) 2011 Stefan Heumader <stefan\@heumader.at>\n\n";
+	print "Copyright (c) 2011 Stefan Heumader <stefan\@heumader.at>\n\n";
 	p_usage();
 	print <<EOF;
 
@@ -105,7 +107,9 @@ sub p_help ()
 -c, --crit=INTEGER
 	critical threshold
 -x, --category=STRING
-	defines which information should be read (...)
+	defines which information should be read
+-l, --licence=STRING
+	comma septerated list of licence items
 EOF
 }
 
@@ -129,6 +133,7 @@ sub check_options ()
 		'w:s'	=> \$o_warn,		'warn:s'		=> \$o_warn,
 		'c:s'	=> \$o_crit,		'critical:s'	=> \$o_crit,
 		'x:s'	=> \$o_category,	'category:s'	=> \$o_category,
+		'l:s'	=> \$o_licence,		'licence:s'		=> \$o_licence,
 	);
 
 	if (defined($o_help))
@@ -153,6 +158,17 @@ sub check_options ()
 	unless (defined($o_community))
 	{
         print "No community string specified!\n";
+		p_usage();
+		exit $ERRORS{"UNKNOWN"};
+	}
+
+	if ($o_category eq 'keySecondsUntilExpire' && defined($o_licence))
+	{
+		@licence_categories = split(',', $o_licence);
+	}
+	elsif ($o_category eq 'keySecondsUntilExpire' && !defined($o_licence))
+	{
+		print "No licence keys specified!\n";
 		p_usage();
 		exit $ERRORS{"UNKNOWN"};
 	}
@@ -222,19 +238,11 @@ if ($DEBUG)
 
 # Read Result
 my $result = $session->get_table(
-	-baseoid => $oids{$o_category}
+	-baseoid => $oids{$o_category},
 );
 
-unless (defined($result))
-{
-	print "ERROR: ".$session->error()."\n";
-	$session->close;
-	exit $ERRORS{'UNKNOWN'};
-}
-$session->close;
-
 my $value = 0;
-my @results = ();
+$value = 100000000 if $o_category eq 'keySecondsUntilExpire';
 foreach (keys %$result)
 {
 	verbose("OID: $_, Desc: $$result{$_}");
@@ -246,7 +254,23 @@ foreach (keys %$result)
 		}
 		elsif ($o_category eq 'keySecondsUntilExpire')
 		{
-			$value = $$result{$_} if $$result{$_} < $value;
+			my $tmp = $$result{$_};
+			my @results = grep(/$tmp/, @licence_categories);
+			if (grep(/$tmp/, @licence_categories))
+			{
+				my $new_oid = $_;
+				$new_oid =~ s/1.3.6.1.4.1.15497.1.1.1.12.1.2/1.3.6.1.4.1.15497.1.1.1.12.1.4/;
+
+				my $result2 = $session->get_request(
+					-varbindlist => [$new_oid,],
+				);
+				foreach (keys %$result2)
+				{
+					verbose("OID: $_, Desc: $$result2{$_}");
+				}
+				$$result2{$new_oid} = int($$result2{$new_oid}/86400);
+				$value = $$result2{$new_oid} if $$result2{$new_oid} < $value;
+			}
 		}
 		else
 		{
@@ -254,6 +278,14 @@ foreach (keys %$result)
 		}
 	}
 }
+
+unless (defined($result))
+{
+	print "ERROR: ".$session->error()."\n";
+	$session->close;
+	exit $ERRORS{'UNKNOWN'};
+}
+$session->close;
 
 my $exit_code = $ERRORS{"OK"};
 if ($o_category eq 'raidLastError')
@@ -277,7 +309,7 @@ elsif ($o_category eq 'keySecondsUntilExpire')
 	}
 	elsif ($value > $o_crit)
 	{
-		print "SNMP $o_category WARNING: $value > $o_crit\n";
+		print "SNMP $o_category WARNING: $value < $o_warn\n";
 		$exit_code = $ERRORS{'WARNING'};
 	}
 	else
