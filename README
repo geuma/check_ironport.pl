@@ -11,6 +11,10 @@ check_ironport.pl is a Nagios Plugin, which requests
 specific parameters via SNMP from a Cisco Ironport Web
 and Mail Security appliance.
 
+For detailed information about installation and
+configuration see:
+http://check-ironport.urandom.at/cgi-bin/index.pl?menu=documentation
+
 See http://www.perl.org for more details on Perl
 and http://www.nagios.org/ for more details on Nagios.
 
